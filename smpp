@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+
+if (!process.env.ip){console.log("ip is required. e.g: ip=127.0.0.1 port=2675 protocol=smpp user=demo pass=pwpwpw dest=601800000000 msg=hello\ world smpp");process.exit(1);}
+
+var ip = process.env.ip;
+var porotocl = process.env.protocol ? process.env.protocol : "smpp"; //use ssmpp for ssl
+var port = process.env.port ? process.env.port : "2675";
+var username = process.env.user ? process.env.user:"guest";
+var password = process.env.pass ? process.env.pass:"demo";
+var destination = process.env.dest ? process.env.dest:"0000000000";
+var message = process.env.msg ? process.env.msg:"hello";
+console.log('connecting...');
+
+var smpp = require('smpp');
+
+var session = smpp.connect({
+	url: porotocl+'://'+ip+':'+port,
+	auto_enquire_link_period: 10000
+});
+
+try{
+	console.log('binding to '+porotocl+'://'+ip+':'+port+' via username ('+username+')');
+	session.bind_transceiver({
+		system_id: username,
+		password: password
+	}, function(pdu) {
+		if (pdu.command_status == 0) {
+			console.log('bind successful.');
+			// Successfully bound
+			console.log('sending the short message: '+message);
+			session.submit_sm({
+				destination_addr: destination,
+				short_message: message
+			}, function(pdu) {
+				if (pdu.command_status == 0) {
+					// Message successfully sent
+					console.log('message sent.');
+					console.log('PDU message ID: '+pdu.message_id);
+					console.log('PDU Dump:');
+					console.log(pdu);
+				}
+			});
+		}
+	});
+} catch (e) {
+	console.log("Error occured:");
+	console.error(e);
+}
